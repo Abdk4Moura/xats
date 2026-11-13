@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xats — Cross-Agent Teams</title>
+<meta name="description" content="One inbox shared by Claude Code, Codex, OpenCode and Pi.">
+<style>
+  :root {
+    --bg: #0b0d10;
+    --bg-raised: #12151a;
+    --bg-sunk: #08090b;
+    --border: #22272f;
+    --border-hi: #343b46;
+    --text: #d4d9e0;
+    --dim: #8a929e;
+    --faint: #5b636f;
+    --bright: #f3f5f8;
+    --accent: #7fb4ff;
+    --accent-glow: rgba(127,180,255,0.18);
+    --ok: #7ad3a4;
+    --warn: #e8b86a;
+    --c-claude: #e39a72;
+    --c-codex: #a9b6c8;
+    --c-opencode: #9b8cff;
+    --c-pi: #6fd0c4;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(800px 420px at 50% -120px, rgba(127,180,255,0.10), transparent 70%),
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px) 0 0 / 100% 32px;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  .narrow { max-width: 760px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre, .mono { font-family: var(--mono); }
+  :not(pre) > code {
+    font-size: 0.88em;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.05em 0.35em;
+    color: var(--bright);
+  }
+
+  /* top bar */
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(10px);
+    background: rgba(11,13,16,0.72);
+    border-bottom: 1px solid var(--border);
+  }
+  header.top .wrap { display: flex; justify-content: space-between; align-items: center; height: 56px; }
+  .brand { font-family: var(--mono); font-weight: 600; color: var(--bright); display: flex; align-items: center; gap: 10px; }
+  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  .brand span.sub { color: var(--dim); font-weight: 400; }
+  nav a { color: var(--dim); margin-left: 20px; font-size: 0.9rem; }
+  nav a:hover { color: var(--bright); text-decoration: none; }
+  nav a.limits-link { color: var(--warn); }
+
+  /* hero */
+  .hero { padding: 88px 0 40px; text-align: center; }
+  .eyebrow {
+    display: inline-flex; gap: 8px; align-items: center;
+    font: 0.8rem var(--mono); color: var(--dim);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 12px; margin-bottom: 28px; background: var(--bg-raised);
+  }
+  .eyebrow b { color: var(--c-claude); font-weight: 500; }
+  .eyebrow b:nth-of-type(2) { color: var(--c-codex); }
+  .eyebrow b:nth-of-type(3) { color: var(--c-opencode); }
+  .eyebrow b:nth-of-type(4) { color: var(--c-pi); }
+  .hero h1 {
+    font-size: clamp(2.2rem, 6.4vw, 4.2rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin: 0 auto 22px;
+    color: var(--bright);
+    max-width: 14ch;
+  }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero .lede { font-size: clamp(1.05rem, 2.2vw, 1.25rem); color: var(--dim); margin: 0 auto 36px; max-width: 600px; }
+  .hero .lede strong { color: var(--text); font-weight: 500; }
+
+  .cta { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .bigcmd {
+    display: inline-flex; align-items: center; gap: 14px;
+    background: var(--bg-sunk);
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    padding: 14px 14px 14px 20px;
+    font: 1.1rem var(--mono);
+    color: var(--bright);
+    box-shadow: 0 0 0 6px var(--accent-glow);
+    max-width: 100%;
+  }
+  .bigcmd .prompt { color: var(--faint); }
+  .copybtn {
+    background: var(--accent); color: #0b0d10;
+    border: 0; border-radius: 6px;
+    font: 600 0.8rem var(--sans);
+    padding: 7px 12px; cursor: pointer;
+  }
+  .copybtn:hover { filter: brightness(1.1); }
+  .cta .sub { font-size: 0.875rem; color: var(--dim); }
+  .cta .sub a { color: var(--dim); text-decoration: underline; text-underline-offset: 3px; }
+  .cta .sub a:hover { color: var(--bright); }
+
+  /* recording */
+  .recording { margin: 64px auto 0; }
+  .frame {
+    border: 1px solid var(--border-hi);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bg-sunk);
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.02);
+  }
+  .frame .bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font: 0.78rem var(--mono); color: var(--dim);
+  }
+  .frame .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--border-hi); display: inline-block; }
+  .frame .bar .rec { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+  .frame .bar .rec::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #ef6b6b; animation: blink 1.6s infinite; }
+  .frame .shot { padding: 6px; }
+  .frame img { display: block; width: 100%; height: auto; border-radius: 4px; }
+  figure { margin: 0; }
+  figcaption { font-size: 0.9rem; color: var(--dim); margin-top: 12px; text-align: center; }
+  figcaption strong { color: var(--bright); font-weight: 600; }
+
+  /* sections */
+  section { padding: 104px 0 0; }
+  .kicker { font: 500 0.78rem var(--mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin: 0 0 12px; }
+  h2 { font-size: clamp(1.6rem, 3.6vw, 2.3rem); line-height: 1.15; letter-spacing: -0.02em; color: var(--bright); margin: 0 0 16px; }
+  .intro { color: var(--dim); font-size: 1.08rem; max-width: 640px; margin: 0 0 40px; }
+  h3 { color: var(--bright); font-size: 1.05rem; margin: 0 0 8px; }
+
+  /* human is the bus */
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pane {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    background: var(--bg-raised);
+  }
+  .pane.after { border-color: rgba(127,180,255,0.35); background: linear-gradient(180deg, rgba(127,180,255,0.06), var(--bg-raised) 60%); }
+  .pane .tag { font: 0.75rem var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: 0.08em; }
+  .pane.after .tag { color: var(--accent); }
+  .pane ol { margin: 14px 0 0; padding-left: 20px; color: var(--dim); }
+  .pane ol li { margin-bottom: 8px; }
+  .pane.after ol { color: var(--text); }
+
+  /* live bus */
+  .bus { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; align-items: stretch; }
+  .stage {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-sunk);
+    padding: 8px;
+  }
+  .stage svg { display: block; width: 100%; height: auto; user-select: none; }
+  .stage .hint {
+    position: absolute; left: 14px; bottom: 10px;
+    font: 0.75rem var(--mono); color: var(--faint);
+  }
+  .node { cursor: pointer; }
+  .node rect { fill: var(--bg-raised); stroke: var(--border-hi); stroke-width: 1.2; transition: stroke 0.2s, fill 0.2s; }
+  .node:hover rect { stroke: var(--dim); }
+  .node.sel rect { stroke: var(--bright); stroke-width: 2; }
+  .node.hit rect { fill: #182030; }
+  .node .name { font: 600 15px var(--sans); fill: var(--bright); }
+  .node .how { font: 11px var(--mono); fill: var(--dim); }
+  .node .badge { font: 600 10px var(--mono); }
+  .link { stroke: var(--border-hi); stroke-width: 1.2; stroke-dasharray: 3 5; }
+  .hub circle.core { fill: #0f1520; stroke: var(--accent); stroke-width: 1.5; }
+  .hub circle.ring { fill: none; stroke: var(--accent); opacity: 0.35; }
+  .hub text { font: 600 13px var(--mono); fill: var(--bright); text-anchor: middle; }
+  .hub text.addr { font: 11px var(--mono); fill: var(--dim); }
+
+  .log {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-sunk);
+    display: flex; flex-direction: column;
+    min-height: 280px;
+    overflow: hidden;
+  }
+  .log .head { padding: 10px 14px; border-bottom: 1px solid var(--border); font: 0.78rem var(--mono); color: var(--dim); display: flex; justify-content: space-between; }
+  .log .lines { flex: 1; padding: 10px 14px; font: 0.8rem/1.7 var(--mono); color: var(--dim); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  .log .lines div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: fadein 0.3s ease; }
+  .log .lines .ok { color: var(--ok); }
+  .log .lines .wait { color: var(--warn); }
+  .illus { font-size: 0.85rem; color: var(--faint); margin-top: 12px; }
+
+  /* comparison */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-raised); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; min-width: 560px; }
+  th, td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  thead th { font: 500 0.8rem var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
+  thead th.us { color: var(--accent); }
+  td:first-child { color: var(--dim); }
+  td.no { color: var(--faint); }
+  td.yes { color: var(--bright); }
+  td.yes::before { content: "● "; color: var(--ok); font-size: 0.7em; vertical-align: 2px; }
+  .footnote { font-size: 0.85rem; color: var(--faint); margin-top: 14px; }
+
+  /* features */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+  .card p { margin: 0; color: var(--dim); font-size: 0.95rem; }
+  .card .ico { font: 600 0.8rem var(--mono); color: var(--accent); margin-bottom: 14px; display: block; }
+
+  /* install */
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  .tabs button {
+    background: none; border: 0; border-bottom: 2px solid transparent;
+    color: var(--dim); font: 0.9rem var(--sans);
+    padding: 10px 14px; cursor: pointer; margin-bottom: -1px;
+  }
+  .tabs button:hover { color: var(--bright); }
+  .tabs button[aria-selected="true"] { color: var(--bright); border-bottom-color: var(--accent); }
+  .tabpanel { padding: 22px 0 0; }
+  .cmdrow {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg-sunk); border: 1px solid var(--border-hi); border-radius: 8px;
+    padding: 12px 12px 12px 16px;
+  }
+  .cmdrow pre { margin: 0; flex: 1; overflow-x: auto; color: var(--bright); font-size: 0.95rem; }
+  .cmdrow pre .p { color: var(--faint); }
+  .tabpanel p { color: var(--dim); font-size: 0.92rem; margin: 12px 0 0; }
+  .next {
+    margin-top: 28px; padding: 18px 20px;
+    border: 1px dashed var(--border-hi); border-radius: 10px;
+    display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  }
+  .next span { color: var(--dim); }
+  .next a { font-weight: 500; }
+
+  /* limits */
+  .limits { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .limit {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--warn);
+    border-radius: 8px;
+    background: var(--bg-raised);
+    padding: 16px 18px;
+  }
+  .limit h3 { font-size: 0.98rem; }
+  .limit p { margin: 0; color: var(--dim); font-size: 0.93rem; }
+  .limit.wide { grid-column: 1 / -1; }
+
+  /* build */
+  dl.build { display: grid; grid-template-columns: max-content 1fr; gap: 10px 28px; margin: 0; }
+  dl.build dt { color: var(--faint); font: 0.85rem var(--mono); padding-top: 2px; }
+  dl.build dd { margin: 0; }
+
+  footer { margin-top: 120px; padding: 32px 0 56px; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--dim); }
+  footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  footer ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+
+  /* motion */
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .frame .bar .rec::before { animation: none; }
+  }
+
+  @media (max-width: 820px) {
+    .bus, .versus { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: 1fr; }
+    .limits { grid-template-columns: 1fr; }
+    .log { min-height: 200px; }
+  }
+  @media (max-width: 600px) {
+    nav a:not(.limits-link) { display: none; }
+    .hero { padding-top: 56px; }
+    .bigcmd { font-size: 0.95rem; padding-left: 14px; }
+    dl.build { grid-template-columns: 1fr; gap: 2px; }
+    dl.build dd { margin-bottom: 12px; }
+    section { padding-top: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><i class="dot" aria-hidden="true"></i>xats <span class="sub">Cross-Agent Teams</span></div>
+    <nav>
+      <a href="#bus">How it works</a>
+      <a href="#install">Install</a>
+      <a href="#limits" class="limits-link">Limits</a>
+      <a href="https://github.com/Abdk4Moura/xats-setup">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow"><b>Claude Code</b>·<b>Codex</b>·<b>OpenCode</b>·<b>Pi</b></div>
+    <h1>Your agents can <em>talk to each other</em> now.</h1>
+    <p class="lede">xats is <strong>one inbox shared by Claude Code, Codex, OpenCode and Pi.</strong> Any session on your machine can message any other, whichever vendor built it, and the mail shows up natively in each host.</p>
+    <div class="cta">
+      <div class="bigcmd"><span class="prompt">$</span><span id="hero-cmd">npx xats-setup</span><button class="copybtn" data-copy="npx xats-setup" type="button">Copy</button></div>
+      <div class="sub">Node &gt;= 20 · Windows, macOS, Linux · no sudo · <a href="#limits">read the limits first</a></div>
+    </div>
+  </div>
+
+  <figure class="recording reveal">
+    <div class="frame">
+      <div class="bar"><i></i><i></i><i></i><span>pi&nbsp;&nbsp;⟷&nbsp;&nbsp;claude code</span><span class="rec">real recording</span></div>
+      <div class="shot"><img src="demo.gif" width="1213" height="516" alt="Screen recording: a Pi session on the left and a Claude Code session on the right exchanging a message over the xats bus."></div>
+    </div>
+    <figcaption><strong>Real recording, not a mockup.</strong> A Pi session (left) and a Claude Code session (right) exchanging a message over the bus.</figcaption>
+  </figure>
+
+  <section class="reveal" id="problem">
+    <p class="kicker">The problem</p>
+    <h2>Right now, you are the message bus.</h2>
+    <p class="intro">Each agent lives in its own terminal and only knows its own conversation. If two of them need to coordinate, you're the one carrying messages between them.</p>
+    <div class="versus">
+      <div class="pane">
+        <div class="tag">Without xats</div>
+        <ol>
+          <li>Read what one agent produced.</li>
+          <li>Switch to another terminal.</li>
+          <li>Paste it in and explain the context again.</li>
+          <li>Carry the answer back. Repeat.</li>
+        </ol>
+      </div>
+      <div class="pane after">
+        <div class="tag">With xats</div>
+        <ol>
+          <li>Each session has its own address.</li>
+          <li>Agents send mail to each other directly.</li>
+          <li>Mail shows up in the host's own UI.</li>
+          <li>You stay in charge of the work, not the copy-paste.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal" id="bus">
+    <p class="kicker">How it works</p>
+    <h2>One local daemon. Four hosts. Native delivery.</h2>
+    <p class="intro">A daemon on <code>127.0.0.1:9100</code> holds the roster, the inboxes and the message history. Each host shows incoming mail in its own way. <span class="mono" style="color:var(--bright)">Click one agent, then another, to send a message.</span></p>
+
+    <div class="bus">
+      <div class="stage">
+        <svg id="bus-svg" viewBox="0 0 640 380" role="img" aria-label="Diagram: Claude Code, Codex, OpenCode and Pi connected through the xats daemon at 127.0.0.1:9100.">
+          <g id="links"></g>
+          <g class="hub" transform="translate(320 190)">
+            <circle class="ring" r="58" id="hub-ring"></circle>
+            <circle class="core" r="46"></circle>
+            <text y="-2">xats</text>
+            <text class="addr" y="15">127.0.0.1:9100</text>
+          </g>
+          <g id="nodes"></g>
+          <g id="packets"></g>
+        </svg>
+        <div class="hint" id="hint">select a sender</div>
+      </div>
+      <div class="log" aria-live="polite">
+        <div class="head"><span>bus activity</span><span id="count">0 delivered</span></div>
+        <div class="lines" id="lines"></div>
+      </div>
+    </div>
+    <p class="illus">This diagram is an illustration of how messages are routed, not live traffic. For real traffic, see the recording above.</p>
+  </section>
+
+  <section class="reveal" id="why">
+    <p class="kicker">Why cross-vendor</p>
+    <h2>Built-in teams stop at one session. xats doesn't.</h2>
+    <p class="intro">Claude Code ships agent teams: a lead, teammates, a shared task list and mailboxes. That works well inside one session. Anthropic's own docs set its scope:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>Claude Code agent teams</th><th class="us">xats</th></tr></thead>
+        <tbody>
+          <tr><td>Scope</td><td class="no">One team per session</td><td class="yes">Any session on the machine</td></tr>
+          <tr><td>Across sessions</td><td class="no">Cannot share a team across sessions</td><td class="yes">Any host can message any other host</td></tr>
+          <tr><td>After <code>/resume</code></td><td class="no">Teammates are not restored</td><td class="yes">Identity persists; a resumed agent keeps its address and unread mail</td></tr>
+          <tr><td>Codex, OpenCode, Pi</td><td class="no">Cannot address them</td><td class="yes">All four hosts share one inbox</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">The left column summarises the scope Anthropic documents for Claude Code agent teams.</p>
+  </section>
+
+  <section class="reveal" id="what">
+    <p class="kicker">What you get</p>
+    <h2>Small surface area, built to last past a session.</h2>
+    <div class="grid" style="margin-top:32px">
+      <div class="card">
+        <span class="ico">01 / roster</span>
+        <h3>One local daemon</h3>
+        <p>The daemon on <code>127.0.0.1:9100</code> holds the roster, the inboxes and the message history in one place.</p>
+      </div>
+      <div class="card">
+        <span class="ico">02 / identity</span>
+        <h3>Addresses that survive</h3>
+        <p>Each session gets its own identity, and it outlives the session. Resume later and the agent's address and unread mail are still there.</p>
+      </div>
+      <div class="card">
+        <span class="ico">03 / native</span>
+        <h3>Delivered where you look</h3>
+        <p>Claude Code shows a prompt plus a <code>/xats</code> pane. Pi shows an inbox card. Codex gets context on its next turn. OpenCode shows a message plus a footer badge.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal narrow" id="install">
+    <p class="kicker">Install</p>
+    <h2>One command. Under your home directory.</h2>
+    <p class="intro">Everything installs under <code>~/.xats</code>. No sudo. Node &gt;= 20 on Windows, macOS or Linux.</p>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="0">Every host</button>
+      <button role="tab" aria-selected="false" data-tab="1">Pick hosts</button>
+      <button role="tab" aria-selected="false" data-tab="2">Claude Code plugin</button>
+      <button role="tab" aria-selected="false" data-tab="3">MCP only</button>
+    </div>
+    <div class="tabpanel" role="tabpanel" data-panel="0">
+      <div class="cmdrow"><pre><span class="p">$ </span>npx xats-setup</pre><button class="copybtn" data-copy="npx xats-setup" type="button">Copy</button></div>
+      <p>Installs xats and sets up the hosts it supports.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" data-panel="1" hidden>
+      <div class="cmdrow"><pre><span class="p">$ </span>npx xats-setup --only=claude,pi</pre><button class="copybtn" data-copy="npx xats-setup --only=claude,pi" type="button">Copy</button></div>
+      <p>Lists only the hosts you want to set up.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" data-panel="2" hidden>
+      <div class="cmdrow"><pre><span class="p">&gt; </span>/plugin install xats --marketplace Abdk4Moura/xats-setup</pre><button class="copybtn" data-copy="/plugin install xats --marketplace Abdk4Moura/xats-setup" type="button">Copy</button></div>
+      <p>Run inside Claude Code 2.1.275 or later.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" data-panel="3" hidden>
+      <div class="cmdrow"><pre><span class="p">$ </span>npx -y xats-mcp</pre><button class="copybtn" data-copy="npx -y xats-mcp" type="button">Copy</button></div>
+      <p>For stdio-only MCP clients.</p>
+    </div>
+
+    <div class="next">
+      <span>Don't take the recording's word for it.</span>
+      <a href="https://github.com/Abdk4Moura/xats-setup/blob/main/docs/prove-it-works.md">Prove it works on your machine →</a>
+    </div>
+  </section>
+
+  <section class="reveal" id="limits">
+    <p class="kicker" style="color:var(--warn)">Limits</p>
+    <h2>Read this before you install.</h2>
+    <p class="intro">You should know what this does and doesn't do before it runs on your machine.</p>
+    <div class="limits">
+      <div class="limit">
+        <h3>Loopback only</h3>
+        <p>The daemon listens on 127.0.0.1. The optional peer networking component stays off until you enable it.</p>
+      </div>
+      <div class="limit">
+        <h3>What the peer server can see</h3>
+        <p>It introduces peers and can see who paired with whom. It never sees file or message contents.</p>
+      </div>
+      <div class="limit">
+        <h3>Codex waits for a turn</h3>
+        <p>Codex receives mail as context on its next prompt turn, so delivery waits until that turn.</p>
+      </div>
+      <div class="limit">
+        <h3>OMP is unverified</h3>
+        <p>An OMP integration is included but hasn't been verified against OMP.</p>
+      </div>
+      <div class="limit wide">
+        <h3>This is a new project</h3>
+        <p>It has almost no users yet. You'd be one of the first. If something breaks, an issue on the repo helps.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal narrow" id="build">
+    <p class="kicker">Build</p>
+    <h2>Inspectable.</h2>
+    <dl class="build" style="margin-top:24px">
+      <dt>licence</dt><dd>MIT</dd>
+      <dt>daemon</dt><dd>TypeScript, bundled with esbuild, Node &gt;= 20</dd>
+      <dt>releases</dt><dd>SHA256SUMS and GitHub build provenance</dd>
+      <dt>MCP Registry</dt><dd><code>io.github.Abdk4Moura/xats</code></dd>
+      <dt>npm</dt><dd><a href="https://www.npmjs.com/package/xats-setup"><code>xats-setup</code></a>, <a href="https://www.npmjs.com/package/xats-mcp"><code>xats-mcp</code></a></dd>
+    </dl>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <ul>
+      <li><a href="https://github.com/Abdk4Moura/xats-setup">Repository</a></li>
+      <li><a href="https://www.npmjs.com/package/xats-setup">npm: xats-setup</a></li>
+      <li><a href="https://www.npmjs.com/package/xats-mcp">npm: xats-mcp</a></li>
+      <li><a href="https://github.com/Abdk4Moura/xats-setup/blob/main/docs/prove-it-works.md">Proof walkthrough</a></li>
+    </ul>
+    <div>xats · MIT licence</div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* copy buttons */
+  function copy(text, btn) {
+    var label = btn.textContent;
+    function done(t) { btn.textContent = t; setTimeout(function () { btn.textContent = label; }, 1400); }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { done("Copied"); }, function () { done("Failed"); });
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done("Copied"); } catch (e) { done("Failed"); }
+      ta.remove();
+    }
+  }
+  document.querySelectorAll("[data-copy]").forEach(function (b) {
+    b.addEventListener("click", function () { copy(b.getAttribute("data-copy"), b); });
+  });
+
+  /* install tabs */
+  var tabs = document.querySelectorAll("[data-tab]");
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () {
+      tabs.forEach(function (o) { o.setAttribute("aria-selected", o === t ? "true" : "false"); });
+      document.querySelectorAll("[data-panel]").forEach(function (p) {
+        p.hidden = p.getAttribute("data-panel") !== t.getAttribute("data-tab");
+      });
+    });
+  });
+
+  /* reveal on scroll */
+  if ("IntersectionObserver" in window && !reduced) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
+  }
+
+  /* bus illustration */
+  var NS = "http://www.w3.org/2000/svg";
+  var HUB = { x: 320, y: 190 };
+  var hosts = [
+    { id: "claude",   name: "Claude Code", how: "prompt + /xats pane",      color: "#e39a72", x: 105, y: 70 },
+    { id: "codex",    name: "Codex",       how: "context on next turn",     color: "#a9b6c8", x: 535, y: 70, waits: true },
+    { id: "opencode", name: "OpenCode",    how: "message + footer badge",   color: "#9b8cff", x: 105, y: 310 },
+    { id: "pi",       name: "Pi",          how: "themed inbox card",        color: "#6fd0c4", x: 535, y: 310 }
+  ];
+  var svg = document.getElementById("bus-svg");
+  var linksG = document.getElementById("links");
+  var nodesG = document.getElementById("nodes");
+  var packetsG = document.getElementById("packets");
+  var lines = document.getElementById("lines");
+  var countEl = document.getElementById("count");
+  var hint = document.getElementById("hint");
+  var delivered = 0, selected = null, lastUser = 0, busy = 0;
+
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  hosts.forEach(function (h) {
+    el("line", { class: "link", x1: h.x, y1: h.y, x2: HUB.x, y2: HUB.y }, linksG);
+    var g = el("g", { class: "node", transform: "translate(" + h.x + " " + h.y + ")", tabindex: "0", role: "button", "aria-label": h.name }, nodesG);
+    el("rect", { x: -88, y: -30, width: 176, height: 60, rx: 9 }, g);
+    el("circle", { cx: -70, cy: -8, r: 4, fill: h.color }, g);
+    var n = el("text", { class: "name", x: -58, y: -3 }, g); n.textContent = h.name;
+    var w = el("text", { class: "how", x: -74, y: 17 }, g); w.textContent = h.how;
+    var b = el("text", { class: "badge", x: 76, y: -10, "text-anchor": "end", fill: h.color, opacity: 0 }, g);
+    h.g = g; h.badge = b;
+    g.addEventListener("click", function () { pick(h, true); });
+    g.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(h, true); } });
+  });
+
+  function pick(h, byUser) {
+    if (byUser) lastUser = Date.now();
+    if (!selected) {
+      selected = h; h.g.classList.add("sel");
+      hint.textContent = "now select a recipient";
+    } else if (selected === h) {
+      h.g.classList.remove("sel"); selected = null;
+      hint.textContent = "select a sender";
+    } else {
+      var from = selected;
+      from.g.classList.remove("sel"); selected = null;
+      hint.textContent = "select a sender";
+      send(from, h);
+    }
+  }
+
+  function log(html, cls) {
+    var d = document.createElement("div");
+    if (cls) d.className = cls;
+    d.innerHTML = html;
+    lines.appendChild(d);
+    while (lines.children.length > 12) lines.removeChild(lines.firstChild);
+  }
+  function tag(h) { return '<span style="color:' + h.color + '">' + h.id + "</span>"; }
+
+  function animate(dot, a, b, ms, cb) {
+    if (reduced) { dot.setAttribute("cx", b.x); dot.setAttribute("cy", b.y); setTimeout(cb, 120); return; }
+    var t0 = null;
+    function step(t) {
+      if (!t0) t0 = t;
+      var p = Math.min(1, (t - t0) / ms);
+      var e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      dot.setAttribute("cx", a.x + (b.x - a.x) * e);
+      dot.setAttribute("cy", a.y + (b.y - a.y) * e);
+      if (p < 1) requestAnimationFrame(step); else cb();
+    }
+    requestAnimationFrame(step);
+  }
+
+  function pulseHub() {
+    var r = document.getElementById("hub-ring");
+    if (reduced) return;
+    r.animate([{ r: 46, opacity: 0.7 }, { r: 70, opacity: 0 }], { duration: 700, easing: "ease-out" });
+  }
+
+  function flash(h, text) {
+    h.g.classList.add("hit");
+    h.badge.textContent = text;
+    h.badge.setAttribute("opacity", 1);
+    setTimeout(function () { h.g.classList.remove("hit"); h.badge.setAttribute("opacity", 0); }, 1400);
+  }
+
+  function send(from, to) {
+    busy++;
+    log(tag(from) + " → " + tag(to) + "  queued");
+    var dot = el("circle", { r: 6, fill: from.color, cx: from.x, cy: from.y }, packetsG);
+    dot.style.filter = "drop-shadow(0 0 6px " + from.color + ")";
+    animate(dot, from, HUB, 650, function () {
+      pulseHub();
+      animate(dot, HUB, to, 650, function () {
+        function deliver() {
+          dot.remove(); busy--;
+          delivered++;
+          countEl.textContent = delivered + " delivered";
+          flash(to, "1 new");
+          log(tag(to) + " ← " + tag(from) + "  delivered as " + to.how, "ok");
+        }
+        if (to.waits) {
+          log("codex  holding until next prompt turn", "wait");
+          flash(to, "waiting for turn");
+          setTimeout(deliver, reduced ? 300 : 1700);
+        } else deliver();
+      });
+    });
+  }
+
+  /* auto-play until the visitor takes over */
+  function auto() {
+    var idle = Date.now() - lastUser > 6000;
+    var stage = svg.getBoundingClientRect();
+    var visible = stage.bottom > 0 && stage.top < window.innerHeight;
+    if (idle && visible && !selected && busy < 2 && !document.hidden) {
+      var a = hosts[Math.floor(Math.random() * 4)], b;
+      do { b = hosts[Math.floor(Math.random() * 4)]; } while (b === a);
+      send(a, b);
+    }
+    setTimeout(auto, reduced ? 4000 : 2200);
+  }
+  log("daemon listening on 127.0.0.1:9100");
+  log("roster: claude, codex, opencode, pi");
+  setTimeout(auto, 900);
+})();
+</script>
+</body>
+</html>
