@@ -11,15 +11,18 @@
 <meta property="og:title" content="Cross-Agent Teams: one inbox for Claude Code, Codex, OpenCode and Pi">
 <meta property="og:description" content="A local daemon, no account, and identities that outlive a session. Your agents can talk to each other across vendor boundaries.">
 <meta property="og:url" content="https://abdk4moura.github.io/xats/">
-<meta property="og:image" content="https://abdk4moura.github.io/xats/og.png">
+<meta property="og:image" content="https://abdk4moura.github.io/xats/brand/xats-social-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A pi session and a Claude Code session side by side, titled Cross-Agent Teams">
+<meta property="og:image:alt" content="The xats logo and Cross-Agent Teams: One inbox. Any coding agent.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Cross-Agent Teams: one inbox for Claude Code, Codex, OpenCode and Pi">
 <meta name="twitter:description" content="A local daemon, no account, and identities that outlive a session.">
-<meta name="twitter:image" content="https://abdk4moura.github.io/xats/og.png">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d10'/%3E%3Cpath d='M8 12l5 4-5 4' stroke='%237ad3a4' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M17 20h7' stroke='%237fb4ff' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta name="twitter:image" content="https://abdk4moura.github.io/xats/brand/xats-social-card.png">
+<meta name="twitter:image:alt" content="The xats logo and Cross-Agent Teams: One inbox. Any coding agent.">
+<link rel="icon" type="image/svg+xml" href="brand/xats-app-icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="brand/xats-app-icon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="brand/xats-app-icon-180.png">
 <style>
   :root {
     --bg: #0b0d10;
@@ -84,14 +87,15 @@
   }
   header.top .wrap { display: flex; justify-content: space-between; align-items: center; height: 56px; }
   .brand { font-family: var(--mono); font-weight: 600; color: var(--bright); display: flex; align-items: center; gap: 10px; }
-  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  .brand img { display: block; width: 106px; height: 36px; }
   .brand span.sub { color: var(--dim); font-weight: 400; }
   nav a { color: var(--dim); margin-left: 20px; font-size: 0.9rem; }
   nav a:hover { color: var(--bright); text-decoration: none; }
   nav a.limits-link { color: var(--warn); }
 
   /* hero */
-  .hero { padding: 88px 0 40px; text-align: center; }
+  .hero { padding: 72px 0 40px; text-align: center; }
+  .hero-mark { display: block; width: 88px; height: 88px; margin: 0 auto 18px; }
   .eyebrow {
     display: inline-flex; gap: 8px; align-items: center;
     font: 0.8rem var(--mono); color: var(--dim);
@@ -325,7 +329,7 @@
 
 <header class="top">
   <div class="wrap">
-    <div class="brand"><i class="dot" aria-hidden="true"></i>xats <span class="sub">Cross-Agent Teams</span></div>
+    <div class="brand"><img src="brand/xats-wordmark-dark.svg" width="106" height="36" alt="xats"><span class="sub">Cross-Agent Teams</span></div>
     <nav>
       <a href="#bus">How it works</a>
       <a href="#install">Install</a>
@@ -339,6 +343,7 @@
 <div class="wrap">
 
   <div class="hero">
+    <img class="hero-mark" src="brand/xats-mark.svg" width="88" height="88" alt="" aria-hidden="true">
     <div class="eyebrow"><b>Claude Code</b>·<b>Codex</b>·<b>OpenCode</b>·<b>Pi</b></div>
     <h1>Your agents can <em>talk to each other</em> now.</h1>
     <p class="lede">xats is <strong>one inbox shared by Claude Code, Codex, OpenCode and Pi.</strong> Any session on your machine can message any other, whichever vendor built it, and the mail shows up natively in each host.</p>
@@ -534,6 +539,7 @@
       <li><a href="https://www.npmjs.com/package/xats-setup">npm: xats-setup</a></li>
       <li><a href="https://www.npmjs.com/package/xats-mcp">npm: xats-mcp</a></li>
       <li><a href="https://github.com/Abdk4Moura/xats-setup/blob/main/docs/prove-it-works.md">Proof walkthrough</a></li>
+      <li><a href="brand/">Logo and brand kit</a></li>
     </ul>
     <div>xats · MIT licence</div>
   </div>
